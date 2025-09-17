@@ -35,32 +35,52 @@ export default class DockerManager {
     }
   }
 
-  async getContainerByName(name: string) {
-    const containers = await this.docker.listContainers({ all: true })
-    for (const container of containers) {
-      if (container.Names.includes(name)) {
-        return this.docker.getContainer(container.Id)
-      }
-    }
-  }
-
   async getContainersByService(serviceName: string) {
     if (!serviceName || !serviceName.trim()) {
       throw new Error('Service name is required to fetch containers.')
     }
 
     const needle = `${serviceName}-`
-
     const list = await this.docker.listContainers({ all: true })
 
     const matched = list.filter((c) =>
       (c.Names ?? []).some((n) => n.replace(/^\//, '').includes(needle))
     )
 
-    return matched.map((info) => ({
-      info,
-      handle: this.docker.getContainer(info.Id),
-    }))
+    // enrichir avec stats CPU & RAM
+    const containers = await Promise.all(
+      matched.map(async (info) => {
+        const handle = this.docker.getContainer(info.Id)
+        const stats = (await handle.stats({ stream: false })) as any
+
+        // RAM
+        const memoryUsage = stats.memory_stats?.usage ?? 0
+        const memoryLimit = stats.memory_stats?.limit ?? 0
+        const memoryPercent =
+          memoryUsage > 0 && memoryLimit > 0 ? (memoryUsage / memoryLimit) * 100 : 0
+
+        // CPU
+        const cpuDelta =
+          stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage
+        const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage
+
+        const cpuPercent =
+          systemDelta > 0 ? (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100 : 0
+
+        return {
+          info, // infos brutes de listContainers
+          handle, // handle Dockerode
+          stats: {
+            cpuPercent: Number(cpuPercent.toFixed(2)),
+            memoryPercent: Number(memoryPercent.toFixed(2)),
+            memoryUsage,
+            memoryLimit,
+          },
+        }
+      })
+    )
+
+    return containers
   }
 
   async createContainersService(url: string) {

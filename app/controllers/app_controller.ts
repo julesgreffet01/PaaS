@@ -6,7 +6,6 @@ import { inject } from '@adonisjs/core'
 import DirManager from '#managers/dir_manager'
 import { serviceValidator } from '#validators/service'
 import { promises as fs } from 'node:fs'
-import Deployment from '#models/deployment'
 import { ServiceService } from '#services/service_service'
 
 @inject()
@@ -18,7 +17,6 @@ export default class AppController {
 
   async home({ inertia }: HttpContext) {
     const apps: App[] = await App.query().preload('typeApp').preload('services').orderBy('id')
-    console.log(await Deployment.all())
     return inertia.render('app/Home', { apps })
   }
 
@@ -69,15 +67,11 @@ export default class AppController {
 
   async show({ request, inertia }: HttpContext) {
     const appId = Number(request.param('appId'))
-    console.log(`appId: ${appId}`)
-    const app = await App.query()
-      .where('id', appId)
-      .preload('typeApp')
-      .preload('services', (sq) => {
-        sq.preload('deployments').orderBy('id', 'desc')
-        sq.preload('typeService')
-      })
-      .firstOrFail()
-    return inertia.render('app/Show', { app })
+    const showData = await this.serviceService.show(appId)
+    return inertia.render('app/Show', {
+      app: showData.app,
+      containers: showData.containers,
+      deployLogs: showData.deployLogs,
+    })
   }
 }

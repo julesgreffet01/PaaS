@@ -51,6 +51,11 @@ export class ServiceService {
     //repo
     try {
       await this.githubManager.gitClone(service.repoUrl, url)
+      await Deployment.create({
+        isSuccess: true,
+        step: 'git clone repo',
+        serviceId: service.id,
+      })
     } catch (error) {
       await Deployment.create({
         isSuccess: false,
@@ -64,6 +69,11 @@ export class ServiceService {
     //verif dockerfile
     try {
       await this.dockerManager.verifyFiles(url)
+      await Deployment.create({
+        isSuccess: true,
+        step: 'verification du dockerfile et compose',
+        serviceId: service.id,
+      })
     } catch (error) {
       await Deployment.create({
         isSuccess: false,
@@ -78,6 +88,11 @@ export class ServiceService {
     if (envText) {
       try {
         await environnement(envText, url)
+        await Deployment.create({
+          isSuccess: true,
+          step: 'environnement',
+          serviceId: service.id,
+        })
       } catch (error) {
         await Deployment.create({
           isSuccess: false,
@@ -92,6 +107,11 @@ export class ServiceService {
     //docker
     try {
       await this.dockerManager.createContainersService(url)
+      await Deployment.create({
+        isSuccess: true,
+        step: 'lancement docker',
+        serviceId: service.id,
+      })
     } catch (error) {
       await Deployment.create({
         isSuccess: false,
@@ -106,6 +126,11 @@ export class ServiceService {
     if (service.migrations && service.migrations !== '' && service.migrations.trim()) {
       try {
         await this.migrationManager.makeMigration(url, service.migrations)
+        await Deployment.create({
+          isSuccess: true,
+          step: 'lancement des migrations',
+          serviceId: service.id,
+        })
       } catch (error) {
         await Deployment.create({
           isSuccess: false,
@@ -121,6 +146,11 @@ export class ServiceService {
     if (service.dnsAddress && service.dnsAddress.length > 0 && service.port) {
       try {
         await this.caddyManager.createRoute(service.dnsAddress, service.port, service)
+        await Deployment.create({
+          isSuccess: true,
+          step: 'changement caddy',
+          serviceId: service.id,
+        })
       } catch (error) {
         await Deployment.create({
           isSuccess: false,
@@ -135,5 +165,25 @@ export class ServiceService {
       isRunning: true,
     })
     await service.save()
+  }
+
+  async show(appId: number) {
+    const app = await App.query()
+      .where('id', appId)
+      .preload('typeApp')
+      .preload('services', (sq) => {
+        sq.preload('deployments').orderBy('id', 'desc')
+        sq.preload('typeService')
+      })
+      .firstOrFail()
+    // const containers = await this.dockerManager.getContainersByService(app.services[0].name)
+    const containers = await this.dockerManager.getContainersByService('tuto')
+    // const containers = await this.dockerManager.getContainers()
+    const deployLogs = await Deployment.query().where('service_id', app.services[0].id)
+    return {
+      app,
+      containers,
+      deployLogs,
+    }
   }
 }
