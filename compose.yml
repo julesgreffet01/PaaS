@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+    image: paas/app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8080
+      ENV_PATH: /etc/secrets
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - ./.env:/etc/secrets/.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/jules/projects:/projects
+    user: "0:0"
+    group_add:
+      - "988"
+    networks:
+      - caddy_net
+      - default
+
+volumes:
+  postgres_data:
+
+networks:
+  caddy_net:
+    external: true
+    name: caddy_caddy_net
