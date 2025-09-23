@@ -10,6 +10,7 @@ import {
   FaGitAlt,
   FaGithub,
   FaGlobe,
+  FaPlus,
   FaRocket,
 } from 'react-icons/fa'
 import { LuAppWindow, LuArrowUpDown } from 'react-icons/lu'
@@ -158,6 +159,24 @@ export default function Home(props: InferPageProps<AppController, 'show'>) {
               </div>
             </div>
           )}
+          {props.app.typeAppId === 1 && (
+            <div className="my-6">
+              <div className="w-full p-2">
+                <Button className="flex items-center text-sm gap-2" onClick={() => window.location.href=`${props.app.id}/service/add`}><FaPlus/>Add Service</Button>
+              </div>
+              <div className="flex gap-4">
+                {props.app.services ? (
+                  props.app.services.map((service: any, index: number) => (
+                    <div className="border border-ring rounded-lg p-5" key={index}>{service.name}</div>
+                  ))
+                ) : (
+                  <p>pas de services pour le moment</p>
+                )}
+              </div>
+            </div>
+          )
+
+          }
         </>
       </Layout>
     </>

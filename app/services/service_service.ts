@@ -176,9 +176,7 @@ export class ServiceService {
         sq.preload('typeService')
       })
       .firstOrFail()
-    // const containers = await this.dockerManager.getContainersByService(app.services[0].name)
-    const containers = await this.dockerManager.getContainersByService('tuto')
-    // const containers = await this.dockerManager.getContainers()
+    const containers = await this.dockerManager.getContainersByService(app.services[0].name)
     const deployLogs = await Deployment.query().where('service_id', app.services[0].id)
     return {
       app,
