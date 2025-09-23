@@ -14,10 +14,10 @@ export default class Service extends BaseModel {
   declare name: string
 
   @column()
-  declare repoUrl: string
+  declare repoUrl: string | null
 
   @column()
-  declare envEncrypted: string
+  declare envEncrypted: string | null
 
   @column()
   declare isRunning: boolean

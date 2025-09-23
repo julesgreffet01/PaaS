@@ -7,8 +7,8 @@ export default class extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.uuid('id').primary()
       table.string('name').notNullable().unique()
-      table.text('repo_url').notNullable()
-      table.text('env_encrypted').notNullable()
+      table.text('repo_url').nullable()
+      table.text('env_encrypted').nullable()
       table.boolean('is_running').notNullable()
       table.string('migrations').nullable()
       table.boolean('webhook').notNullable().defaultTo(false)

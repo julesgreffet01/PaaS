@@ -11,6 +11,7 @@ import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 const authController = () => import('#controllers/auth_controller')
 const appController = () => import('#controllers/app_controller')
+const serviceController = () => import('#controllers/services_controller')
 
 router.get('/login', [authController, 'login']).as('login')
 router.post('/login', [authController, 'handleLogin'])
@@ -22,6 +23,10 @@ router
     router.get('/publication', [appController, 'publication']).as('publication')
     router.post('/publication', [appController, 'handlePublication']).as('handlePublication')
     router.get('/app/:appId', [appController, 'show']).as('show')
+    router.get('/app/:appId/service/add', [serviceController, 'create']).as('addService')
+    router
+      .post('/app/:appId/service/add', [serviceController, 'handleCreate'])
+      .as('handleAddService')
   })
   .use(middleware.auth())
   .as('app')

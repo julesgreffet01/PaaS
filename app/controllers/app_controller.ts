@@ -4,7 +4,7 @@ import TypeApp from '#models/type_app'
 import { appValidator } from '#validators/app'
 import { inject } from '@adonisjs/core'
 import DirManager from '#managers/dir_manager'
-import { serviceValidator } from '#validators/service'
+import { serviceAppValidator } from '#validators/service'
 import { promises as fs } from 'node:fs'
 import { ServiceService } from '#services/service_service'
 
@@ -44,7 +44,7 @@ export default class AppController {
         'branch',
       ])
       const serviceName = app.name + '_app'
-      const serviceDataVerified = await serviceValidator.validate({
+      const serviceDataVerified = await serviceAppValidator.validate({
         serviceName,
         repoURL: serviceData.repoURL,
         migrations: serviceData.migrations,

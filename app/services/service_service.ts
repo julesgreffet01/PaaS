@@ -6,8 +6,10 @@ import CaddyManager from '#managers/caddy_manager'
 import ServiceModel from '#models/service'
 import encryption from '@adonisjs/core/services/encryption'
 import Deployment from '#models/deployment'
-import { environnement } from '../utils/functions.js'
+import { composeFile, dockerfile, environnement } from '../utils/functions.js'
 import { inject } from '@adonisjs/core'
+import { mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
 
 @inject()
 export class ServiceService {
@@ -50,7 +52,7 @@ export class ServiceService {
 
     //repo
     try {
-      await this.githubManager.gitClone(service.repoUrl, url)
+      await this.githubManager.gitClone(service.repoUrl as string, url)
       await Deployment.create({
         isSuccess: true,
         step: 'git clone repo',
@@ -183,5 +185,97 @@ export class ServiceService {
       containers,
       deployLogs,
     }
+  }
+
+  async createDatabase(
+    app: App,
+    serviceDataVerified: {
+      serviceName: string
+      dockerfile: string | null
+      compose: string
+      typeServiceId: number
+    }
+  ) {
+    const service = await ServiceModel.create({
+      name: serviceDataVerified.serviceName,
+      isRunning: false,
+      appId: app.id,
+      typeServiceId: serviceDataVerified.typeServiceId,
+    })
+    const url = `/projects/${app.name}/${service.name}/`
+    try {
+      await mkdir(dirname(url), { recursive: true })
+      await Deployment.create({
+        isSuccess: true,
+        step: 'create File',
+        errorLogs: null,
+        serviceId: service.id,
+      })
+    } catch (error) {
+      await Deployment.create({
+        isSuccess: false,
+        step: 'create File',
+        errorLogs: error.message,
+        serviceId: service.id,
+      })
+      throw error
+    }
+    if (serviceDataVerified.dockerfile) {
+      try {
+        await dockerfile(serviceDataVerified.dockerfile, url)
+        await Deployment.create({
+          isSuccess: true,
+          step: 'chargement du dockerfile',
+          errorLogs: null,
+          serviceId: service.id,
+        })
+      } catch (error) {
+        await Deployment.create({
+          isSuccess: false,
+          step: 'chargement du dockerfile',
+          errorLogs: error.message,
+          serviceId: service.id,
+        })
+      }
+    }
+
+    try {
+      await composeFile(serviceDataVerified.compose, url)
+      await Deployment.create({
+        isSuccess: true,
+        step: 'chargement du compose.yml',
+        errorLogs: null,
+        serviceId: service.id,
+      })
+    } catch (error) {
+      await Deployment.create({
+        isSuccess: false,
+        step: 'chargement du compose.yml',
+        errorLogs: error.message,
+        serviceId: service.id,
+      })
+    }
+
+    try {
+      await this.dockerManager.createContainersService(url)
+      await Deployment.create({
+        isSuccess: true,
+        step: 'lancement docker',
+        serviceId: service.id,
+      })
+    } catch (error) {
+      await Deployment.create({
+        isSuccess: false,
+        step: 'lancement docker',
+        errorLogs: error.message,
+        serviceId: service.id,
+      })
+      throw error
+    }
+
+    service.merge({
+      isRunning: true,
+    })
+    await service.save()
   }
 }

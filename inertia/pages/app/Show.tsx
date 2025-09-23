@@ -33,7 +33,6 @@ export default function Home(props: InferPageProps<AppController, 'show'>) {
       console.error('Erreur de copie :', err)
     }
   }
-  console.log(props.deployLogs)
   return (
     <>
       <Head title="Show" />
